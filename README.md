@@ -57,42 +57,36 @@ LABEL_STUDIO_API_KEY=<在 LS 账户设置中获取的 API Key>
 
 ## Linux 部署
 
+本服务设计用于预装了 PyTorch 和 CUDA 的 GPU 服务器（如云平台 GPU Pod）。
+安装时继承系统已有的 torch/numpy，只补充缺失的包，避免版本冲突。
+
 ### 前置条件
 
 - Python 3.10+
 - NVIDIA GPU + 驱动已安装
-- CUDA Toolkit（与 PyTorch 版本匹配）
+- 系统已预装 PyTorch（含 CUDA 支持）
 
-验证 GPU 和 CUDA 是否可用：
+验证：
 
 ```bash
 nvidia-smi
-python3 -c "import torch; print(torch.cuda.is_available())"
+python3 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
 ### 安装步骤
 
 ```bash
-# 1. 创建并激活虚拟环境（推荐）
-python3 -m venv venv
-source venv/bin/activate
+# 1. 创建虚拟环境，继承系统已安装的包（torch、numpy 等）
+python3 -m venv ~/venv-sam2 --system-site-packages
+source ~/venv-sam2/bin/activate
 
 # 2. 升级 pip
 pip install --upgrade pip
 
-# 3. 安装 PyTorch（CUDA 12.1 版本，根据实际 CUDA 版本调整）
-#    查询对应命令：https://pytorch.org/get-started/locally/
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
-# 4. 安装 SAM2（国内网络用镜像）
-pip install sam2 -i https://pypi.tuna.tsinghua.edu.cn/simple/
-# 或（有梯子时）：
-# pip install git+https://github.com/facebookresearch/sam2.git
-
-# 5. 安装其余依赖
+# 3. 安装项目依赖（不重装 torch/numpy，只补充缺失的包）
 pip install -r requirements-base.txt -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
-# 6. 下载 SAM2.1 Tiny 模型权重（约 150 MB）
+# 4. 下载 SAM2.1 Tiny 模型权重（约 150 MB）
 python download_models.py --model tiny
 ```
 
