@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  sam2-video-backend:
+    container_name: sam2_video_backend
+    build:
+      context: .
+      args:
+        TEST_ENV: ${TEST_ENV:-false}
+    environment:
+      - LOG_LEVEL=DEBUG
+      - WORKERS=1
+      - THREADS=4
+      - DEVICE=cuda
+      # SAM2.1 Tiny — change to sam2.1_hiera_s.yaml / sam2.1_hiera_large.pt for better accuracy
+      - MODEL_CONFIG=configs/sam2.1/sam2.1_hiera_t.yaml
+      - MODEL_CHECKPOINT=sam2.1_hiera_tiny.pt
+      - MAX_FRAMES_TO_TRACK=10
+      # Fill in your Label Studio connection details:
+      - LABEL_STUDIO_URL=
+      - LABEL_STUDIO_API_KEY=
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./data/server:/data"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

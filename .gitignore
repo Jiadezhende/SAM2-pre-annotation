@@ -1,0 +1,24 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Model weights
+*.pt
+*.pth
+
+# Env
+.env
+
+# Docker data volume
+data/
+
+# Debug frames
+debug-frames/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reference repo (not part of this service)
+label-studio-ml-backend/
