@@ -6,6 +6,9 @@
 
 ![workflow](https://github.com/HumanSignal/label-studio-ml-backend/raw/master/label_studio_ml/examples/segment_anything_2_video/Sam2Video.gif)
 
+> **说明：** 本服务基于官方 [segment_anything_2_video](https://github.com/HumanSignal/label-studio-ml-backend/tree/master/label_studio_ml/examples/segment_anything_2_video) 示例，
+> 适配了 SAM2.1 Tiny 模型。
+
 ---
 
 ## 工作原理
@@ -14,9 +17,6 @@
 2. 在某帧用 **VideoRectangle** 追踪框圈住目标（支持多目标）
 3. 点击 **Smart Annotation** → 后端自动将目标追踪到后续 N 帧
 4. 人工检查并修正，继续向后追踪
-
-> **说明：** 本服务基于官方 [segment_anything_2_video](https://github.com/HumanSignal/label-studio-ml-backend/tree/master/label_studio_ml/examples/segment_anything_2_video) 示例，
-> 适配了 SAM2.1 Tiny 模型和跨平台部署。
 
 ---
 
@@ -55,6 +55,88 @@ LABEL_STUDIO_API_KEY=<在 LS 账户设置中获取的 API Key>
 
 ---
 
+## Linux 部署
+
+### 前置条件
+
+- Python 3.10+
+- NVIDIA GPU + 驱动已安装
+- CUDA Toolkit（与 PyTorch 版本匹配）
+
+验证 GPU 和 CUDA 是否可用：
+
+```bash
+nvidia-smi
+python3 -c "import torch; print(torch.cuda.is_available())"
+```
+
+### 安装步骤
+
+```bash
+# 1. 创建并激活虚拟环境（推荐）
+python3 -m venv venv
+source venv/bin/activate
+
+# 2. 升级 pip
+pip install --upgrade pip
+
+# 3. 安装 PyTorch（CUDA 12.1 版本，根据实际 CUDA 版本调整）
+#    查询对应命令：https://pytorch.org/get-started/locally/
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# 4. 安装 SAM2（国内网络用镜像）
+pip install sam2 -i https://pypi.tuna.tsinghua.edu.cn/simple/
+# 或（有梯子时）：
+# pip install git+https://github.com/facebookresearch/sam2.git
+
+# 5. 安装其余依赖
+pip install -r requirements-base.txt -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+# 6. 下载 SAM2.1 Tiny 模型权重（约 150 MB）
+python download_models.py --model tiny
+```
+
+### 启动服务
+
+#### 方式一：gunicorn（推荐）
+
+```bash
+bash start.sh
+# 或指定参数：
+PORT=9090 WORKERS=1 THREADS=4 gunicorn --bind :9090 --workers 1 --threads 4 --timeout 0 _wsgi:app
+```
+
+#### 方式二：开发模式（带调试输出）
+
+```bash
+python _wsgi.py
+```
+
+服务运行在 `http://0.0.0.0:9090`。
+
+### 后台运行
+
+```bash
+# 使用 nohup
+nohup bash start.sh > sam2.log 2>&1 &
+echo $! > sam2.pid
+
+# 查看日志
+tail -f sam2.log
+
+# 停止服务
+kill $(cat sam2.pid)
+```
+
+### 验证服务（Linux）
+
+```bash
+curl http://localhost:9090/health
+# 期望输出：{"status": "UP"}
+```
+
+---
+
 ## Windows 部署（本地开发）
 
 ### 前置条件
@@ -75,14 +157,13 @@ source venv/Scripts/activate        # Git Bash
 python -m pip install --upgrade pip
 
 # 3. 安装 PyTorch（CUDA 12.1 版本，根据实际 CUDA 版本调整）
-#    查询对应命令：https://pytorch.org/get-started/locally/
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 # 4. 安装 SAM2
 pip install git+https://github.com/facebookresearch/sam2.git
 
 # 5. 安装其余依赖
-pip install -r requirements-base.txt -r requirements.txt
+pip install -r requirements-base.txt -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 # 6. 下载 SAM2.1 Tiny 模型权重（约 150 MB）
 python download_models.py --model tiny
@@ -98,47 +179,7 @@ python _wsgi.py
 > **注意：** `_wsgi.py` 会自动检测 Windows 环境并设置 `TORCH_COMPILE_DISABLE=1`，
 > 无需手动配置（Windows 不支持 Triton，torch.compile 会报错）。
 
-### 验证
-
-```bash
-curl http://localhost:9090/health
-# 期望输出：{"status": "UP"}
-```
-
----
-
-## Linux 部署（Docker，推荐生产环境）
-
-### 前置条件
-
-- Docker + Docker Compose
-- NVIDIA GPU + 驱动
-- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
-
-```bash
-# 验证 NVIDIA Container Toolkit 是否正常
-docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
-```
-
-### 启动服务
-
-```bash
-# 编辑 docker-compose.yml，填入 LABEL_STUDIO_URL 和 LABEL_STUDIO_API_KEY
-# 注意：不能使用 localhost，需填写宿主机的实际 IP 地址
-
-docker-compose up --build
-# 首次构建需下载依赖和模型权重，约需 5-10 分钟
-```
-
-后台运行：
-
-```bash
-docker-compose up --build -d
-docker-compose logs -f    # 查看日志
-docker-compose down       # 停止服务
-```
-
-### 验证
+### 验证服务（Windows）
 
 ```bash
 curl http://localhost:9090/health
@@ -150,9 +191,7 @@ curl http://localhost:9090/health
 ## 连接 Label Studio
 
 1. 打开 Label Studio 项目 → **Settings → Machine Learning → Add Model**
-2. 填写 URL：`http://<运行服务的机器IP>:9090`
-   - Windows 本地：`http://localhost:9090`
-   - Linux Docker：`http://<宿主机IP>:9090`（不能用 localhost）
+2. 填写 ML 后端 URL：`http://<运行服务的机器IP>:9090`
 3. 点击 **Validate and Save**
 
 ### 标注配置（Labeling Interface XML）
@@ -191,7 +230,7 @@ curl http://localhost:9090/health
 # 1. 下载对应权重
 python download_models.py --model large
 
-# 2. 修改 .env（Windows）或 docker-compose.yml（Linux）
+# 2. 修改 .env
 MODEL_CONFIG=configs/sam2.1/sam2.1_hiera_l.yaml
 MODEL_CHECKPOINT=sam2.1_hiera_large.pt
 ```
@@ -209,6 +248,8 @@ MODEL_CHECKPOINT=sam2.1_hiera_large.pt
 | `DEVICE` | `cuda` | 推理设备（`cuda` 或 `cpu`）|
 | `MAX_FRAMES_TO_TRACK` | `10` | 每次追踪的帧数 |
 | `PORT` | `9090` | 服务端口 |
+| `WORKERS` | `1` | gunicorn worker 数量 |
+| `THREADS` | `4` | gunicorn 线程数 |
 | `LOG_LEVEL` | `DEBUG` | 日志级别 |
 
 ---

@@ -1,2 +1,4 @@
 gunicorn==22.0.0
 label-studio-ml>=1.0.9
+label-studio-sdk
+rq
