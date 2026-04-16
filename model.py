@@ -8,7 +8,6 @@ import logging
 
 from typing import List, Dict, Optional
 from label_studio_ml.model import LabelStudioMLBase
-from label_studio_ml.response import ModelResponse
 from label_studio_sdk.label_interface.objects import PredictionValue
 from sam2.build_sam import build_sam2_video_predictor
 
@@ -163,7 +162,7 @@ class SAM2VideoModel(LabelStudioMLBase):
         mask_image = cv2.addWeighted(frame, 1.0, mask_image, 0.8, 0)
         cv2.imwrite(output_file, mask_image)
 
-    def predict(self, tasks: List[Dict], context: Optional[Dict] = None, **kwargs) -> ModelResponse:
+    def predict(self, tasks: List[Dict], context: Optional[Dict] = None, **kwargs) -> List[Dict]:
         """
         Receive a VideoRectangle annotation on a frame and propagate tracking
         to the next MAX_FRAMES_TO_TRACK frames using SAM2 VideoPredictor.
@@ -262,4 +261,4 @@ class SAM2VideoModel(LabelStudioMLBase):
                 }]
             )
             logger.debug(f'Prediction: {prediction.model_dump()}')
-            return ModelResponse(predictions=[prediction])
+            return [prediction.model_dump()]
